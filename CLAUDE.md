@@ -15,7 +15,7 @@ python3 -m http.server 8000      # then visit http://localhost:8000
 
 Three files, no framework, no bundler:
 
-- **`index.html`** — DOM structure: `<canvas id="board">` (300×600px) for the playfield, `<canvas id="next-canvas">` (120×120px) for the preview, sidebar HUD (`#score`, `#lines`, `#level`), and `#overlay` — a container of named `.screen[data-screen="…"]` panels (`start`, `message`), only one visible at a time.
+- **`index.html`** — DOM structure: `<canvas id="board">` (300×600px) for the playfield, `<canvas id="next-canvas">` (120×120px) for the preview, sidebar HUD (`#score`, `#lines`, `#level`), and `#overlay` — a container of named `.screen[data-screen="…"]` panels (`start`, `message`, `pause`), only one visible at a time.
 - **`style.css`** — Dark/retro arcade theme; uses CSS variables, flexbox, and `backdrop-filter` on overlays.
 - **`game.js`** — All game logic (`'use strict'`, no modules).
 
@@ -37,10 +37,11 @@ Three files, no framework, no bundler:
 | Persistence | `store.get(key, fallback)` / `store.set(key, value)` — `try/catch`-wrapped `localStorage` JSON helper; keys are `tetris-*` |
 | State flags | `paused`, `gameOver`, `menuOpen`, `animId` (RAF handle); `gameInputEnabled()` gates the `keydown` handler on all three |
 | Stats snapshot | `getStats()` → `{ score, lines, level, maxCombo }` |
+| Pause menu | `openPauseMenu()`/`closePauseMenu()` show/hide `.screen[data-screen="pause"]` and toggle `paused`+`menuOpen` together; `getStartLevel()` reads the level selector's persisted choice (`tetris-start-level`, key `START_LEVEL_KEY`), used by every `init()` call site that doesn't pass an explicit level |
 
 ### Game flow
 
-Boot shows the `start` screen (no auto-start). `init(startLevel = 1)` → `spawn()` → `requestAnimationFrame(loop)`. Each frame: accumulate dt → auto-drop or `lockPiece()` → `draw()`. `lockPiece()` = `merge()` + `clearLines()` (updates combo) + `spawn()`. If `spawn()` immediately collides → `endGame()` → `showScreen('message')`. `loop()` returns before `draw()`/the next RAF request once `gameOver` is set, so no frame renders after the final lock — keep that early return when touching the loop.
+Boot shows the `start` screen (no auto-start). `init(startLevel = 1)` → `spawn()` → `requestAnimationFrame(loop)`. Each frame: accumulate dt → auto-drop or `lockPiece()` → `draw()`. `lockPiece()` = `merge()` + `clearLines()` (updates combo) + `spawn()`. If `spawn()` immediately collides → `endGame()` → `showScreen('message')`. `loop()` returns before `draw()`/the next RAF request once `gameOver` is set, so no frame renders after the final lock — keep that early return when touching the loop. `P`/`Escape` call `togglePause()`, which opens/closes the `pause` screen (`endGame()`'s `message` screen is untouched by pausing).
 
 ## Tunable constants (top of game.js)
 

@@ -255,3 +255,68 @@ kbd {
 #start-btn:hover {
   background: #9bbdff;
 }
+
+/* ---- Pause menu ---- */
+.pause-menu {
+  width: 220px;
+}
+
+.pause-menu-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.pause-menu-actions button {
+  background: var(--kbd-bg);
+  color: var(--text);
+  border: 1px solid var(--kbd-border);
+  border-radius: 6px;
+  padding: 8px 20px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.pause-menu-actions button:hover {
+  border-color: #7aa2f7;
+  color: #7aa2f7;
+}
+
+#pause-resume-btn {
+  background: #7aa2f7;
+  color: #0f0f17;
+  border-color: #7aa2f7;
+}
+
+#pause-resume-btn:hover {
+  background: #9bbdff;
+  color: #0f0f17;
+}
+
+.pause-menu-section {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+  text-align: left;
+}
+
+.pause-menu-section[hidden] {
+  display: none;
+}
+
+#pause-start-level {
+  width: 100%;
+  background: var(--kbd-bg);
+  border: 1px solid var(--kbd-border);
+  border-radius: 4px;
+  color: var(--kbd-text);
+  font-family: inherit;
+  font-size: 13px;
+  padding: 6px 8px;
+}
