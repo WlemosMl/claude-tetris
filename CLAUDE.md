@@ -37,6 +37,7 @@ Three files, no framework, no bundler:
 | Persistence | `store.get(key, fallback)` / `store.set(key, value)` — `try/catch`-wrapped `localStorage` JSON helper; keys are `tetris-*` |
 | State flags | `paused`, `gameOver`, `menuOpen`, `animId` (RAF handle); `gameInputEnabled()` gates the `keydown` handler on all three |
 | Stats snapshot | `getStats()` → `{ score, lines, level, maxCombo }` |
+| Records | `getRecords()`/`saveRecord(entry)` keep a top-`RECORDS_MAX` (5) local high-score table in `store` under `RECORDS_KEY` (`tetris-records`); `renderAllRecords(highlightEntry, records?)` renders both the start-screen and game-over copies — pass the array `saveRecord()` returns (not a fresh `getRecords()`) when highlighting the just-saved entry, since `store.get` re-parses JSON into new objects each call, breaking `===` identity |
 
 ### Game flow
 
