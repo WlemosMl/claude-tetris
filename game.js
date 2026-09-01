@@ -43,8 +43,8 @@ const overlayScore = document.getElementById('overlay-score');
 const restartBtn = document.getElementById('restart-btn');
 const startBtn = document.getElementById('start-btn');
 
-// menuOpen: set by feature code that opens a modal screen requiring exclusive
-// input (e.g. the pause menu); nothing in this file sets it yet.
+// menuOpen: true while a modal screen requiring exclusive input is open
+// (currently just the pause menu — see openPauseMenu()/closePauseMenu()).
 let board, current, next, score, lines, level, combo, maxCombo, paused, gameOver, menuOpen, lastTime, dropAccum, dropInterval, animId;
 
 // ---- localStorage helper (throws in private-browsing contexts, so every
@@ -286,18 +286,14 @@ function endGame() {
   showScreen('message');
 }
 
+// Pausing opens the pause menu (data-screen="pause"); game-over keeps using
+// the plain "message" screen via endGame() above, untouched.
 function togglePause() {
-  if (!current || gameOver || menuOpen) return;
-  paused = !paused;
-  if (!paused) {
-    hideOverlay();
-    lastTime = performance.now();
-    loop(lastTime);
+  if (!current || gameOver) return;
+  if (paused) {
+    closePauseMenu();
   } else {
-    cancelAnimationFrame(animId);
-    overlayTitle.textContent = 'PAUSA';
-    overlayScore.textContent = '';
-    showScreen('message');
+    openPauseMenu();
   }
 }
 
@@ -340,7 +336,7 @@ function init(startLevel = 1) {
 }
 
 document.addEventListener('keydown', e => {
-  if (e.code === 'KeyP') { togglePause(); return; }
+  if (e.code === 'KeyP' || e.code === 'Escape') { togglePause(); return; }
   if (!gameInputEnabled()) return;
   switch (e.code) {
     case 'ArrowLeft':
@@ -364,8 +360,63 @@ document.addEventListener('keydown', e => {
   updateHUD();
 });
 
-restartBtn.addEventListener('click', () => init());
-startBtn.addEventListener('click', () => init());
+restartBtn.addEventListener('click', () => init(getStartLevel()));
+startBtn.addEventListener('click', () => init(getStartLevel()));
+
+// ---- Pause menu ----
+const START_LEVEL_KEY = 'tetris-start-level';
+const MAX_START_LEVEL = 15;
+const pauseResumeBtn = document.getElementById('pause-resume-btn');
+const pauseRestartBtn = document.getElementById('pause-restart-btn');
+const pauseControlsBtn = document.getElementById('pause-controls-btn');
+const pauseControlsList = document.getElementById('pause-controls-list');
+const pauseStartLevelSelect = document.getElementById('pause-start-level');
+
+function getStartLevel() {
+  const lvl = Number(store.get(START_LEVEL_KEY, 1));
+  return Number.isInteger(lvl) && lvl >= 1 && lvl <= MAX_START_LEVEL ? lvl : 1;
+}
+
+function populateStartLevelOptions() {
+  for (let i = 1; i <= MAX_START_LEVEL; i++) {
+    const opt = document.createElement('option');
+    opt.value = String(i);
+    opt.textContent = `Nivel ${i}`;
+    pauseStartLevelSelect.appendChild(opt);
+  }
+  pauseStartLevelSelect.value = String(getStartLevel());
+}
+populateStartLevelOptions();
+
+pauseStartLevelSelect.addEventListener('change', () => {
+  store.set(START_LEVEL_KEY, Number(pauseStartLevelSelect.value));
+});
+
+function openPauseMenu() {
+  paused = true;
+  menuOpen = true;
+  cancelAnimationFrame(animId);
+  pauseControlsList.hidden = true;
+  pauseStartLevelSelect.value = String(getStartLevel());
+  showScreen('pause');
+}
+
+function closePauseMenu() {
+  paused = false;
+  menuOpen = false;
+  hideOverlay();
+  lastTime = performance.now();
+  loop(lastTime);
+}
+
+pauseResumeBtn.addEventListener('click', closePauseMenu);
+pauseRestartBtn.addEventListener('click', () => {
+  menuOpen = false;
+  init(getStartLevel());
+});
+pauseControlsBtn.addEventListener('click', () => {
+  pauseControlsList.hidden = !pauseControlsList.hidden;
+});
 
 const themeToggle = document.getElementById('theme-toggle');
 const toggleIcon = themeToggle.querySelector('.toggle-icon');
