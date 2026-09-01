@@ -48,11 +48,20 @@
       </aside>
     </div>
 
-    <div id="overlay" class="overlay hidden">
-      <div class="overlay-box">
-        <p id="overlay-title">GAME OVER</p>
-        <p id="overlay-score"></p>
-        <button id="restart-btn">Reiniciar</button>
+    <div id="overlay" class="overlay">
+      <div class="screen" data-screen="start">
+        <div class="overlay-box">
+          <p class="screen-title">TETRIS</p>
+          <button id="start-btn">Jugar</button>
+        </div>
+      </div>
+
+      <div class="screen" data-screen="message" hidden>
+        <div class="overlay-box">
+          <p id="overlay-title">GAME OVER</p>
+          <p id="overlay-score"></p>
+          <button id="restart-btn">Reiniciar</button>
+        </div>
       </div>
     </div>
   </div>

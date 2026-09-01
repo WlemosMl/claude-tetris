@@ -183,9 +183,6 @@ kbd {
 .overlay {
   position: absolute;
   inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   background: var(--overlay-bg);
   backdrop-filter: blur(4px);
   border-radius: 4px;
@@ -194,6 +191,28 @@ kbd {
 
 .overlay.hidden {
   display: none;
+}
+
+/* A single named panel within the overlay (start / message / pause / …).
+   Only one is unhidden at a time via the `hidden` attribute. */
+.screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.screen[hidden] {
+  display: none;
+}
+
+.screen-title {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: 6px;
+  color: #7aa2f7;
 }
 
 .overlay-box {
@@ -217,7 +236,8 @@ kbd {
   color: #7aa2f7;
 }
 
-#restart-btn {
+#restart-btn,
+#start-btn {
   margin-top: 8px;
   background: #7aa2f7;
   color: #0f0f17;
@@ -231,6 +251,7 @@ kbd {
   transition: background 0.15s;
 }
 
-#restart-btn:hover {
+#restart-btn:hover,
+#start-btn:hover {
   background: #9bbdff;
 }

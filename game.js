@@ -41,8 +41,61 @@ const overlay = document.getElementById('overlay');
 const overlayTitle = document.getElementById('overlay-title');
 const overlayScore = document.getElementById('overlay-score');
 const restartBtn = document.getElementById('restart-btn');
+const startBtn = document.getElementById('start-btn');
 
-let board, current, next, score, lines, level, paused, gameOver, lastTime, dropAccum, dropInterval, animId;
+// menuOpen: set by feature code that opens a modal screen requiring exclusive
+// input (e.g. the pause menu); nothing in this file sets it yet.
+let board, current, next, score, lines, level, combo, maxCombo, paused, gameOver, menuOpen, lastTime, dropAccum, dropInterval, animId;
+
+// ---- localStorage helper (throws in private-browsing contexts, so every
+// access is wrapped) ----
+const store = {
+  get(key, fallback) {
+    try {
+      const raw = localStorage.getItem(key);
+      if (raw === null) return fallback;
+      try {
+        return JSON.parse(raw);
+      } catch {
+        return raw; // pre-existing plain-string value (e.g. legacy 'tetris-theme')
+      }
+    } catch {
+      return fallback;
+    }
+  },
+  set(key, value) {
+    try {
+      localStorage.setItem(key, JSON.stringify(value));
+    } catch {
+      // ignore — storage unavailable or full
+    }
+  },
+};
+
+// ---- Screen router: #overlay hosts named panels (start / message / …);
+// exactly one is visible at a time via the `hidden` attribute. ----
+function showScreen(name) {
+  overlay.classList.remove('hidden');
+  overlay.querySelectorAll('.screen').forEach(el => {
+    el.hidden = el.dataset.screen !== name;
+  });
+}
+
+function hideOverlay() {
+  overlay.classList.add('hidden');
+}
+
+function speedForLevel(lvl) {
+  return Math.max(100, 1000 - (lvl - 1) * 90);
+}
+
+function gameInputEnabled() {
+  return !!current && !paused && !gameOver && !menuOpen;
+}
+
+function getStats() {
+  return { score, lines, level, maxCombo };
+}
 
 function createBoard() {
   return Array.from({ length: ROWS }, () => new Array(COLS).fill(0));
@@ -109,9 +162,10 @@ function clearLines() {
     lines += cleared;
     score += (LINE_SCORES[cleared] || 0) * level;
     level = Math.floor(lines / 10) + 1;
-    dropInterval = Math.max(100, 1000 - (level - 1) * 90);
+    dropInterval = speedForLevel(level);
     updateHUD();
   }
+  return cleared;
 }
 
 function ghostY() {
@@ -139,7 +193,9 @@ function softDrop() {
 
 function lockPiece() {
   merge();
-  clearLines();
+  const cleared = clearLines();
+  combo = cleared > 0 ? combo + 1 : 0;
+  if (combo > maxCombo) maxCombo = combo;
   spawn();
 }
 
@@ -196,6 +252,8 @@ function draw() {
     for (let c = 0; c < COLS; c++)
       drawBlock(ctx, c, r, board[r][c], BLOCK);
 
+  if (!current) return; // nothing spawned yet (e.g. still on the start screen)
+
   // ghost
   const gy = ghostY();
   for (let r = 0; r < current.shape.length; r++)
@@ -225,20 +283,21 @@ function endGame() {
   cancelAnimationFrame(animId);
   overlayTitle.textContent = 'GAME OVER';
   overlayScore.textContent = `Puntuación: ${score.toLocaleString()}`;
-  overlay.classList.remove('hidden');
+  showScreen('message');
 }
 
 function togglePause() {
-  if (gameOver) return;
+  if (!current || gameOver || menuOpen) return;
   paused = !paused;
   if (!paused) {
+    hideOverlay();
     lastTime = performance.now();
     loop(lastTime);
   } else {
     cancelAnimationFrame(animId);
     overlayTitle.textContent = 'PAUSA';
     overlayScore.textContent = '';
-    overlay.classList.remove('hidden');
+    showScreen('message');
   }
 }
 
@@ -259,27 +318,30 @@ function loop(ts) {
   animId = requestAnimationFrame(loop);
 }
 
-function init() {
+function init(startLevel = 1) {
   board = createBoard();
   score = 0;
   lines = 0;
-  level = 1;
+  level = startLevel;
+  combo = 0;
+  maxCombo = 0;
   paused = false;
   gameOver = false;
-  dropInterval = 1000;
+  menuOpen = false;
+  dropInterval = speedForLevel(level);
   dropAccum = 0;
   lastTime = performance.now();
   next = randomPiece();
   spawn();
   updateHUD();
-  overlay.classList.add('hidden');
+  hideOverlay();
   cancelAnimationFrame(animId);
   animId = requestAnimationFrame(loop);
 }
 
 document.addEventListener('keydown', e => {
   if (e.code === 'KeyP') { togglePause(); return; }
-  if (paused || gameOver) return;
+  if (!gameInputEnabled()) return;
   switch (e.code) {
     case 'ArrowLeft':
       if (!collide(current.shape, current.x - 1, current.y)) current.x--;
@@ -302,7 +364,8 @@ document.addEventListener('keydown', e => {
   updateHUD();
 });
 
-restartBtn.addEventListener('click', init);
+restartBtn.addEventListener('click', () => init());
+startBtn.addEventListener('click', () => init());
 
 const themeToggle = document.getElementById('theme-toggle');
 const toggleIcon = themeToggle.querySelector('.toggle-icon');
@@ -320,13 +383,17 @@ function applyTheme(isLight) {
   }
 }
 
-const savedTheme = localStorage.getItem('tetris-theme');
+const savedTheme = store.get('tetris-theme', 'dark');
 applyTheme(savedTheme === 'light');
 
 themeToggle.addEventListener('click', () => {
   const isLight = !document.body.classList.contains('light-mode');
   applyTheme(isLight);
-  localStorage.setItem('tetris-theme', isLight ? 'light' : 'dark');
+  store.set('tetris-theme', isLight ? 'light' : 'dark');
 });
 
-init();
+// Boot to the start screen instead of auto-starting; the board stays empty
+// (drawn once below) until the player presses "Jugar".
+board = createBoard();
+draw();
+showScreen('start');
