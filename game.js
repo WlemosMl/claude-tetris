@@ -214,16 +214,102 @@ function updateHUD() {
   levelEl.textContent = level;
 }
 
+// ---- Skins: each entry supplies its own 1-8 palette and block-draw
+// function. Board/shape cells keep storing the piece-color index 1-8
+// (COLORS/PIECES contract) unchanged; only the pixels a given index turns
+// into are skin-specific. Skins own block rendering + canvas background;
+// the light/dark theme (below) owns page chrome + the grid line. ----
+function mixColor(hex, amount) {
+  // amount > 0 blends toward white, amount < 0 blends toward black
+  const num = parseInt(hex.slice(1), 16);
+  const r = (num >> 16) & 0xff, g = (num >> 8) & 0xff, b = num & 0xff;
+  const target = amount < 0 ? 0 : 255;
+  const p = Math.min(Math.abs(amount), 1);
+  const mix = c => Math.round(c + (target - c) * p);
+  return `rgb(${mix(r)}, ${mix(g)}, ${mix(b)})`;
+}
+
+function roundRectPath(context, x, y, w, h, r) {
+  context.beginPath();
+  if (context.roundRect) {
+    context.roundRect(x, y, w, h, r);
+    return;
+  }
+  context.moveTo(x + r, y);
+  context.arcTo(x + w, y, x + w, y + h, r);
+  context.arcTo(x + w, y + h, x, y + h, r);
+  context.arcTo(x, y + h, x, y, r);
+  context.arcTo(x, y, x + w, y, r);
+  context.closePath();
+}
+
+const PASTEL_PALETTE = COLORS.map(c => (c ? mixColor(c, 0.45) : null));
+
+const SKINS = {
+  retro: {
+    label: 'Retro',
+    canvasBg: null,
+    palette: COLORS,
+    drawBlock(context, x, y, color, size, alpha) {
+      context.globalAlpha = alpha ?? 1;
+      context.fillStyle = color;
+      context.fillRect(x * size + 1, y * size + 1, size - 2, size - 2);
+      context.fillStyle = 'rgba(255,255,255,0.12)';
+      context.fillRect(x * size + 1, y * size + 1, size - 2, 4);
+      context.globalAlpha = 1;
+    },
+  },
+  neon: {
+    label: 'Neon',
+    canvasBg: '#05050a',
+    palette: COLORS,
+    drawBlock(context, x, y, color, size, alpha) {
+      context.save();
+      context.globalAlpha = alpha ?? 1;
+      context.shadowBlur = 10;
+      context.shadowColor = color;
+      context.fillStyle = color;
+      context.fillRect(x * size + 3, y * size + 3, size - 6, size - 6);
+      context.restore();
+    },
+  },
+  pastel: {
+    label: 'Pastel',
+    canvasBg: null,
+    palette: PASTEL_PALETTE,
+    drawBlock(context, x, y, color, size, alpha) {
+      context.globalAlpha = alpha ?? 1;
+      context.fillStyle = color;
+      roundRectPath(context, x * size + 2, y * size + 2, size - 4, size - 4, 5);
+      context.fill();
+      context.globalAlpha = 1;
+    },
+  },
+  pixel: {
+    label: 'Pixel art',
+    canvasBg: null,
+    palette: COLORS,
+    drawBlock(context, x, y, color, size, alpha) {
+      context.globalAlpha = alpha ?? 1;
+      const dark = mixColor(color, -0.25);
+      const half = size / 2;
+      for (let iy = 0; iy < 2; iy++) {
+        for (let ix = 0; ix < 2; ix++) {
+          context.fillStyle = (ix + iy) % 2 === 0 ? color : dark;
+          context.fillRect(x * size + ix * half + 1, y * size + iy * half + 1, half - (ix === 1 ? 2 : 1), half - (iy === 1 ? 2 : 1));
+        }
+      }
+      context.globalAlpha = 1;
+    },
+  },
+};
+
+let activeSkin = 'retro';
+
 function drawBlock(context, x, y, colorIndex, size, alpha) {
   if (!colorIndex) return;
-  const color = COLORS[colorIndex];
-  context.globalAlpha = alpha ?? 1;
-  context.fillStyle = color;
-  context.fillRect(x * size + 1, y * size + 1, size - 2, size - 2);
-  // highlight
-  context.fillStyle = 'rgba(255,255,255,0.12)';
-  context.fillRect(x * size + 1, y * size + 1, size - 2, 4);
-  context.globalAlpha = 1;
+  const skin = SKINS[activeSkin];
+  skin.drawBlock(context, x, y, skin.palette[colorIndex], size, alpha);
 }
 
 function drawGrid() {
@@ -270,6 +356,7 @@ function draw() {
 function drawNext() {
   const NB = 30;
   nextCtx.clearRect(0, 0, nextCanvas.width, nextCanvas.height);
+  if (!next) return; // nothing queued yet (e.g. still on the start screen)
   const shape = next.shape;
   const offX = Math.floor((4 - shape[0].length) / 2);
   const offY = Math.floor((4 - shape.length) / 2);
@@ -392,8 +479,27 @@ themeToggle.addEventListener('click', () => {
   store.set('tetris-theme', isLight ? 'light' : 'dark');
 });
 
+// ---- Skin selector ----
+const skinSelect = document.getElementById('skin-select');
+
+function applySkin(name) {
+  if (!SKINS[name]) name = 'retro';
+  activeSkin = name;
+  skinSelect.value = name;
+  const bg = SKINS[name].canvasBg;
+  canvas.style.background = bg || '';
+  nextCanvas.style.background = bg || '';
+  draw();
+  drawNext();
+}
+
+skinSelect.addEventListener('change', () => {
+  applySkin(skinSelect.value);
+  store.set('tetris-skin', skinSelect.value);
+});
+
 // Boot to the start screen instead of auto-starting; the board stays empty
 // (drawn once below) until the player presses "Jugar".
 board = createBoard();
-draw();
+applySkin(store.get('tetris-skin', 'retro'));
 showScreen('start');

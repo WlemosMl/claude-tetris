@@ -37,6 +37,7 @@ Three files, no framework, no bundler:
 | Persistence | `store.get(key, fallback)` / `store.set(key, value)` — `try/catch`-wrapped `localStorage` JSON helper; keys are `tetris-*` |
 | State flags | `paused`, `gameOver`, `menuOpen`, `animId` (RAF handle); `gameInputEnabled()` gates the `keydown` handler on all three |
 | Stats snapshot | `getStats()` → `{ score, lines, level, maxCombo }` |
+| Skins | `SKINS[name]` = `{ palette, canvasBg, drawBlock }`; `drawBlock(context, x, y, colorIndex, size, alpha)` dispatches to `SKINS[activeSkin]`. Board/shape cells still store the piece index 1–8 (the `COLORS`/`PIECES` contract) — a skin only changes what pixels that index turns into. `applySkin(name)` sets `activeSkin`, applies `canvasBg` to both canvases, persists to `store` under `tetris-skin`, and redraws. Skins own block rendering + canvas background; the light/dark theme owns page chrome + the grid line (`--grid-line`) — keep the two independent |
 
 ### Game flow
 
